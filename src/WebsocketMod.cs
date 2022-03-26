@@ -207,15 +207,12 @@ namespace SynthRidersWebsockets
         }
         class StageNoteMissEvent
         {
-            public float playTimeMS;
-
             public int multiplier;
 
             public float lifeBarPercent;
 
-            public StageNoteMissEvent(float playTimeMS, int multiplier, float lifeBarPercent)
+            public StageNoteMissEvent(int multiplier, float lifeBarPercent)
             {
-                this.playTimeMS = playTimeMS;
                 this.multiplier = multiplier;
                 this.lifeBarPercent = lifeBarPercent;
             }
@@ -223,7 +220,6 @@ namespace SynthRidersWebsockets
         private void OnNoteFail()
         {
             StageNoteMissEvent missEvent = new StageNoteMissEvent(
-                GameControlManager.s_instance.PlayTimeMS, 
                 GameControlManager.s_instance.ScoreManager.TotalMultiplier,
                 LifeBarHelper.GetScalePercent()
             );
@@ -233,17 +229,17 @@ namespace SynthRidersWebsockets
 
         private void OnEnterSpecial()
         {
-            Send("EnterSpecial", "{}");
+            Send("EnterSpecial", new object());
         }
 
         private void OnCompleteSpecial()
         {
-            Send("CompleteSpecial", "{}");
+            Send("CompleteSpecial", new object());
         }
 
         private void OnFailSpecial()
         {
-            Send("FailSpecial", "{}");
+            Send("FailSpecial", new object());
         }
 
         class OutputEvent
