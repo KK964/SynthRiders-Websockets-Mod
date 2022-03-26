@@ -17,7 +17,14 @@ using UnityEngine.Events;
 using MelonLoader;
 
 using SynthRidersWebsockets.Harmony;
-
+/*
+ * Todo:
+ * - Emit event if song failed.
+ * - Emit event is song is quit.
+ * - Previous high score
+ * - Emit what hand note was for (left, right, special one-hand, special two-hand
+ * - Score on specific hits
+ */
 namespace SynthRidersWebsockets
 {
     public class WebsocketMod : MelonMod
@@ -26,6 +33,12 @@ namespace SynthRidersWebsockets
         private static GameControlManager gameControlManager;
 
         public static MelonPreferences_Category connectionCategory;
+
+        /**
+         * Keep track of last time play time was emitted so we only emit once per second.
+         */
+        private float lastPlayTimeMS = 0;
+
         public override void OnApplicationStart() {
             Instance = this;
             connectionCategory = MelonPreferences.CreateCategory("Connection");
@@ -33,12 +46,38 @@ namespace SynthRidersWebsockets
             int port = connectionCategory.CreateEntry<int>("Port", 9000).Value;
             RuntimePatch.PatchAll();
             Websocket.Start($"{host}:{port}");
-            LoggerInstance.Msg("[Websocket] Started Mod");
+            LoggerInstance.Msg("[Websocket] Started Weboscket mod on " + host + ":" + port.ToString());
         }
         
         public override void OnApplicationQuit()
         {
             Websocket.Stop();
+        }
+
+        class PlayTimeEvent
+        {
+            public float playTimeMS;
+
+            public PlayTimeEvent(float playTimeMS)
+            {
+                this.playTimeMS = playTimeMS;
+            }
+        }
+        public override void OnUpdate()
+        {
+            // If song is playing, check the last play time.  If it's advanced at least one second, emit an update.
+            if (gameControlManager != null && gameControlManager == GameControlManager.s_instance)
+            {
+                if (gameControlManager.SongIsPlaying && (gameControlManager.PlayTimeMS - this.lastPlayTimeMS > 999))
+                {
+                    PlayTimeEvent playTimeEvent = new PlayTimeEvent(gameControlManager.PlayTimeMS);
+                    Send("PlayTime", playTimeEvent);
+                    this.lastPlayTimeMS = gameControlManager.PlayTimeMS;
+                } else if (!gameControlManager.SongIsPlaying && this.lastPlayTimeMS > 0)
+                {
+                    this.lastPlayTimeMS = 0;
+                }
+            }
         }
 
         public void GameManagerInit()
@@ -76,13 +115,18 @@ namespace SynthRidersWebsockets
             public string song;
             public string difficulty;
             public string author;
+            public string beatMapper;
             public float length;
-            public StageSongStartEvent(string song, string difficulty, string author, float length)
+            public float bpm;
+
+            public StageSongStartEvent(string song, string difficulty, string author, string beatMapper, float length, float bpm)
             {
                 this.song = song;
                 this.difficulty = difficulty;
                 this.author = author;
+                this.beatMapper = beatMapper;
                 this.length = length;
+                this.bpm = bpm;
             }
         }
         private void OnSongStart()
@@ -91,9 +135,12 @@ namespace SynthRidersWebsockets
                 GameControlManager.s_instance.InfoProvider.TrackName,
                 GameControlManager.s_instance.InfoProvider.CurrentDifficulty.ToString(),
                 GameControlManager.s_instance.InfoProvider.Author,
-                GameControlManager.CurrentTrackStatic.Song.clip.length);
-            string songStart = JsonConvert.SerializeObject(stageSongStartEvent);
-            Send("SongStart", songStart);
+                GameControlManager.s_instance.InfoProvider.Beatmapper,
+                GameControlManager.CurrentTrackStatic.Song.clip.length,
+                GameControlManager.CurrentTrackStatic.TrackBPM
+            );
+
+            Send("SongStart", stageSongStartEvent);
         }
 
         class StageSongEndEvent
@@ -124,53 +171,94 @@ namespace SynthRidersWebsockets
                 GameControlManager.s_instance.InfoProvider.TotalBadNotes,
                 GameControlManager.s_instance.InfoProvider.TotalFailNotes,
                 score.MaxCombo);
-            string songEnd = JsonConvert.SerializeObject(stageSongEndEvent);
-            Send("SongEnd", songEnd);
+            Send("SongEnd", stageSongEndEvent);
         }
 
         class StageNoteHitEvent
         {
+            public int score { get; set; }
             public int combo { get; set; }
+            public int multiplier { get; set; }
             public float completed { get; set; }
-            public StageNoteHitEvent(int combo, float completed)
+            public float lifeBarPercent { get; set; }
+            
+            public StageNoteHitEvent(int score, int combo, float completed, int multiplier, float lifeBarPercent)
             {
+                this.score = score;
                 this.combo = combo;
                 this.completed = completed;
+                this.multiplier = multiplier;
+                this.lifeBarPercent = lifeBarPercent;
             }
         }
         private void OnNoteHit()
         {
             Game_ScoreManager score = (Game_ScoreManager) ReflectionUtils.GetValue(GameControlManager.s_instance, "m_scoreManager");
+            
             StageNoteHitEvent stageNoteHitEvent = new StageNoteHitEvent(
+                score.Score,
                 score.CurrentCombo,
-                score.NotesCompleted);
-            Send("NoteHit", JsonConvert.SerializeObject(stageNoteHitEvent));
+                score.NotesCompleted,
+                score.TotalMultiplier,
+                LifeBarHelper.GetScalePercent()
+            );
+            
+            Send("NoteHit", stageNoteHitEvent);
         }
+        class StageNoteMissEvent
+        {
+            public int multiplier;
 
+            public float lifeBarPercent;
+
+            public StageNoteMissEvent(int multiplier, float lifeBarPercent)
+            {
+                this.multiplier = multiplier;
+                this.lifeBarPercent = lifeBarPercent;
+            }
+        }
         private void OnNoteFail()
         {
-            Send("NoteMiss", "{}");
+            StageNoteMissEvent missEvent = new StageNoteMissEvent(
+                GameControlManager.s_instance.ScoreManager.TotalMultiplier,
+                LifeBarHelper.GetScalePercent()
+            );
+
+            Send("NoteMiss", missEvent);
         }
 
         private void OnEnterSpecial()
         {
-            Send("EnterSpecial", "{}");
+            Send("EnterSpecial", new object());
         }
 
         private void OnCompleteSpecial()
         {
-            Send("CompleteSpecial", "{}");
+            Send("CompleteSpecial", new object());
         }
 
         private void OnFailSpecial()
         {
-            Send("FailSpecial", "{}");
+            Send("FailSpecial", new object());
         }
 
-        public void Send(string eventName, string data)
+        class OutputEvent
+        {
+            public string eventType;
+            public object data;
+
+            public OutputEvent(string eventType, object data)
+            {
+                this.eventType = eventType;
+                this.data = data;
+            }
+        }
+        public void Send(string eventName, object data)
         {
             if (Websocket.server == null) return;
-            Websocket.Send(eventName + " " + data);
+            OutputEvent outputEvent = new OutputEvent(eventName, data);
+
+            Websocket.Send(JsonConvert.SerializeObject(outputEvent));
         }
 
         public class Websocket

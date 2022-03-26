@@ -12,13 +12,12 @@ To install you need to either download a release, or build the mod yourself.
 
 1. [SynthRiders](https://synthridersvr.com/)
 2. [MelonLoader](https://melonwiki.xyz/#/)
-3. [SynthRiders Websocket Integration](https://github.com/KK964/SynthRiders-Websockets-Mod/releases)
 
 ### Download
 
 1. Download the latest release from [GitHub](https://github.com/KK964/SynthRiders-Websockets-Mod/releases)
 2. Extract the zip file
-3. Copy the dlls to your SynthRiders MelonLoader Mods folder
+3. Copy the dlls to your SynthRiders MelonLoader Mods folder (typically a folder called `Mods` in your SynthRiders installation.  If you see a text file named "PLACE MODS HERE.txt", you're in the right place.)
 
 ### Build
 
@@ -38,21 +37,76 @@ To install you need to either download a release, or build the mod yourself.
 
 ## Usage
 
-Connect to the websocket server; the server will send updates about the game.
+Connect to the websocket server; the server will send updates about the game.  By default, the websocket host will run at `ws://localhost:9000`.  Host and Port can be configured in the MelonPreferences.cfg file if an alternate config is required (e.g. for 2 PC stream setups)
 
 ## Events
 
-- SongStart:
-  - `SongStart {"song":"Song Name", "difficulty": "Difficulty", "author": "Author", "length": Length}`
-- SongEnd:
-  - `SongEnd {"song":"Song Name", "perfect": Perfect, "normal": Normal, "bad": Bad, "fail": Fail, "highestCombo": HighestCombo}`
-- NoteHit:
-  - `NoteHit {"combo": Combo, "completed": Completed}`
-- NoteMiss:
-  - `NoteMiss {}`
-- EnterSpecial:
-  - `EnterSpecial {}`
-- CompleteSpecial:
-  - `CompleteSpecial {}`
-- FailSpecial:
-  - `FailSpecial {}`
+All events are JSON and follow this general structure:
+
+```json
+{ "eventType": "EventType", "data": {}}
+```
+
+### SongStart 
+
+Emitted when the map begins playing.
+
+```json
+{"eventType":"SongStart","data":{"song":"2 Phut Hon (Kaiz Remix)","difficulty":"Master","author":"Phao","beatMapper":"ICHDerHorst","length":191.857,"bpm":128.0}}
+```
+
+### SongEnd
+
+Emitted as the last note of the map is completed.
+
+```json
+{"eventType":"SongEnd","data":{"song":"2 Phut Hon (Kaiz Remix)","perfect":350,"normal":126,"bad":281,"fail":2,"highestCombo":482}}
+```
+
+### PlayTime
+
+Emitted once per second when the song is playing.
+
+```json
+{"eventType":"PlayTime","data":{"playTimeMS":19662.48}}
+```
+
+- `playTimeMS` - Current play time position, in milliseconds.
+
+### NoteHit
+
+Emitted on every note hit successfully
+
+```json
+{"eventType":"NoteHit","data":{"score":938,"combo":1,"multiplier":1,"completed":1.0,"lifeBarPercent":1.0}}
+```
+
+  - `score` - Total score after the note is hit
+  - `combo` - Number of consecutive hits made so far.  This resets after a note miss.
+  - `multiplier` - Current score multiplier.  Runs from 1 to 6.
+  - `completed` - Indicates the percentage of notes completed in the map.? (CHECK THIS)
+  - `lifeBarPercent` - A number between 0 and 1 indicating life bar percentage.
+
+### NoteMiss
+
+```json
+{"eventType":"NoteMiss","data":{"multiplier":2,"lifeBarPercent":0.8333333}}
+```
+
+### EnterSpecial
+
+```json
+{"eventType":"EnterSpecial","data":{}}
+```
+
+### CompleteSpecial
+
+```json
+{"eventType":"CompleteSpecial","data":{}}
+```
+
+### FailSpecial
+
+```json
+{"eventType":"FailSpecial","data":{}}
+```
