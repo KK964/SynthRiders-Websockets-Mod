@@ -259,8 +259,6 @@ namespace SynthRidersWebsockets
             OutputEvent outputEvent = new OutputEvent(eventName, data);
 
             Websocket.Send(JsonConvert.SerializeObject(outputEvent));
-
-            MelonLogger.Msg(JsonConvert.SerializeObject(outputEvent));
         }
 
         public class Websocket
