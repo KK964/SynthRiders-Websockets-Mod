@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -54,6 +56,26 @@ namespace SynthRidersWebsockets
             Websocket.Stop();
         }
 
+        public class SceneChangeEvent
+        {
+            public string sceneName;
+
+            public SceneChangeEvent(string sceneName)
+            {
+                this.sceneName = sceneName;
+            }
+        }
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            base.OnSceneWasLoaded(buildIndex, sceneName);
+
+            LoggerInstance.Msg("SceneChange: " + sceneName);
+
+            SceneChangeEvent sceneChangeEvent = new SceneChangeEvent(sceneName);
+            
+            this.Send("SceneChange", sceneChangeEvent);
+        }
+
         class PlayTimeEvent
         {
             public float playTimeMS;
@@ -78,6 +100,12 @@ namespace SynthRidersWebsockets
                     this.lastPlayTimeMS = 0;
                 }
             }
+        }
+
+        public void EmitReturnToMenuEvent()
+        {
+            MelonLogger.Msg("Emitting return to menu event");
+            this.Send("ReturnToMenu", new object());
         }
 
         public void GameManagerInit()
@@ -118,8 +146,9 @@ namespace SynthRidersWebsockets
             public string beatMapper;
             public float length;
             public float bpm;
+            public string albumArt;
 
-            public StageSongStartEvent(string song, string difficulty, string author, string beatMapper, float length, float bpm)
+            public StageSongStartEvent(string song, string difficulty, string author, string beatMapper, float length, float bpm, string albumArt = null)
             {
                 this.song = song;
                 this.difficulty = difficulty;
@@ -127,17 +156,29 @@ namespace SynthRidersWebsockets
                 this.beatMapper = beatMapper;
                 this.length = length;
                 this.bpm = bpm;
+                this.albumArt = albumArt;
             }
         }
         private void OnSongStart()
         {
+            // Find how I might get at the rendered png file for the album art.
+            // If I'm lucky, it'll be present by the time the song starts.
+            string albumArtPath = Directory.GetCurrentDirectory() + "\\SongStatusImage.png";
+            string albumArtEncoded = null;
+
+            if (File.Exists(albumArtPath))
+            {
+                albumArtEncoded = "data:image/png;base64," + System.Convert.ToBase64String(File.ReadAllBytes(albumArtPath));
+            }
+
             StageSongStartEvent stageSongStartEvent = new StageSongStartEvent(
                 GameControlManager.s_instance.InfoProvider.TrackName,
                 GameControlManager.s_instance.InfoProvider.CurrentDifficulty.ToString(),
                 GameControlManager.s_instance.InfoProvider.Author,
                 GameControlManager.s_instance.InfoProvider.Beatmapper,
                 GameControlManager.CurrentTrackStatic.Song.clip.length,
-                GameControlManager.CurrentTrackStatic.TrackBPM
+                GameControlManager.CurrentTrackStatic.TrackBPM,
+                albumArtEncoded
             );
 
             Send("SongStart", stageSongStartEvent);
@@ -297,7 +338,7 @@ namespace SynthRidersWebsockets
                     if (eventSocket == null) eventSocket = this;
                 }
 
-                protected override void OnError(ErrorEventArgs e)
+                protected override void OnError(WebSocketSharp.ErrorEventArgs e)
                 {
                     if (eventSocket == null) eventSocket = this;
                 }
