@@ -69,8 +69,6 @@ namespace SynthRidersWebsockets
         {
             base.OnSceneWasLoaded(buildIndex, sceneName);
 
-            LoggerInstance.Msg("SceneChange: " + sceneName);
-
             SceneChangeEvent sceneChangeEvent = new SceneChangeEvent(sceneName);
             
             this.Send("SceneChange", sceneChangeEvent);
@@ -104,7 +102,6 @@ namespace SynthRidersWebsockets
 
         public void EmitReturnToMenuEvent()
         {
-            MelonLogger.Msg("Emitting return to menu event");
             this.Send("ReturnToMenu", new object());
         }
 
@@ -161,8 +158,9 @@ namespace SynthRidersWebsockets
         }
         private void OnSongStart()
         {
-            // Find how I might get at the rendered png file for the album art.
-            // If I'm lucky, it'll be present by the time the song starts.
+            // It'd be better to get this directly from within the game, but it seems
+            // artwork isn't populated in the info provider.  This seems to work well enough
+            // but do feel free to implement a better option if available.
             string albumArtPath = Directory.GetCurrentDirectory() + "\\SongStatusImage.png";
             string albumArtEncoded = null;
 
