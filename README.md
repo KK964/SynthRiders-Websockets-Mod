@@ -52,15 +52,38 @@ All events are JSON and follow this general structure:
 Emitted when the map begins playing.
 
 ```json
-{"eventType":"SongStart","data":{"song":"2 Phut Hon (Kaiz Remix)","difficulty":"Master","author":"Phao","beatMapper":"ICHDerHorst","length":191.857,"bpm":128.0}}
+{
+    "eventType":"SongStart",
+	"data":{
+     	"song":"2 Phut Hon (Kaiz Remix)",
+        "difficulty":"Master",
+        "author":"Phao",
+        "beatMapper":"ICHDerHorst",
+        "length":191.857,
+        "bpm":128.0,
+        "albumArt": ""
+	}
+}
 ```
+
+`albumArt` - If album art is available, this contains a data url containing a base64-encoded PNG image.  (You can use this URL as-is in a web browser or browser source to display the image).  Otherwise it's an empty string.
 
 ### SongEnd
 
 Emitted as the last note of the map is completed.
 
 ```json
-{"eventType":"SongEnd","data":{"song":"2 Phut Hon (Kaiz Remix)","perfect":350,"normal":126,"bad":281,"fail":2,"highestCombo":482}}
+{
+    "eventType":"SongEnd",
+    "data":{
+        "song":"2 Phut Hon (Kaiz Remix)",
+        "perfect":350,
+        "normal":126,
+        "bad":281,
+        "fail":2,
+        "highestCombo":482
+    }
+}
 ```
 
 ### PlayTime
@@ -78,7 +101,16 @@ Emitted once per second when the song is playing.
 Emitted on every note hit successfully
 
 ```json
-{"eventType":"NoteHit","data":{"score":938,"combo":1,"multiplier":1,"completed":1.0,"lifeBarPercent":1.0}}
+{
+    "eventType":"NoteHit",
+    "data":{
+        "score":938,
+        "combo":1,
+        "multiplier":1,
+        "completed":1.0,
+        "lifeBarPercent":1.0
+    }
+}
 ```
 
   - `score` - Total score after the note is hit
@@ -90,7 +122,13 @@ Emitted on every note hit successfully
 ### NoteMiss
 
 ```json
-{"eventType":"NoteMiss","data":{"multiplier":2,"lifeBarPercent":0.8333333}}
+{
+    "eventType":"NoteMiss",
+    "data":{
+        "multiplier":2,
+        "lifeBarPercent":0.8333333
+    }
+}
 ```
 
 ### EnterSpecial
@@ -110,3 +148,29 @@ Emitted on every note hit successfully
 ```json
 {"eventType":"FailSpecial","data":{}}
 ```
+
+### SceneChange
+
+Emitted when changing 'scenes'.  For example, changing to game play, summary, main menu, etc.  
+
+Some scene names of interest:
+
+* `3.GameEnd` - The summary scene after successfully completing a map where it shows your score, accuracy, etc.  
+
+```json
+{
+    "eventType":"SceneChange",
+    "data":{
+        "sceneName":"3.GameEnd"
+    }
+}
+```
+
+### ReturnToMenu
+
+Emitted when the user selects the "Return to Menu" button on the game pause screen.
+
+```
+{"eventType":"ReturnToMenu","data":{}}
+```
+
