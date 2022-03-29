@@ -44,3 +44,13 @@ public class GameControlManagerPatch
         SynthRidersWebsockets.WebsocketMod.Instance.GameManagerInit();
     }
 }
+
+[HarmonyPatch(typeof(GameControlManager), "ReturnToMenu")]
+public class GameControlManagerReturnToMenuPatch
+{
+    [HarmonyPostfix]
+    public static void PostFix()
+    {
+        SynthRidersWebsockets.WebsocketMod.Instance.EmitReturnToMenuEvent();
+    }
+}
