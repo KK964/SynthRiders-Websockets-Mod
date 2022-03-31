@@ -44,7 +44,7 @@ Connect to the websocket server; the server will send updates about the game.  B
 All events are JSON and follow this general structure:
 
 ```json
-{ "eventType": "EventType", "data": {}}
+{ "eventType": "EventType", "data": {} }
 ```
 
 ### SongStart 
@@ -53,20 +53,27 @@ Emitted when the map begins playing.
 
 ```json
 {
-    "eventType":"SongStart",
-	"data":{
-     	"song":"2 Phut Hon (Kaiz Remix)",
-        "difficulty":"Master",
-        "author":"Phao",
-        "beatMapper":"ICHDerHorst",
-        "length":191.857,
-        "bpm":128.0,
+    "eventType": "SongStart",
+	"data": {
+     	"song": "2 Phut Hon (Kaiz Remix)",
+        "difficulty": "Master",
+        "author": "Phao",
+        "beatMapper": "ICHDerHorst",
+        "length": 191.857,
+        "bpm": 128.0,
         "albumArt": ""
 	}
 }
 ```
 
-`albumArt` - If album art is available, this contains a data url containing a base64-encoded PNG image.  (You can use this URL as-is in a web browser or browser source to display the image).  Otherwise it's an empty string.
+- `song` - Song title
+- `difficulty` - Song difficulty
+- `author` - Song artist/author
+- `beatMapper` - Map creator
+- `length` - Song length in seconds
+- `bpm` - Song beats per minute
+- `albumArt` - If album art is available, this contains a data url containing a base64-encoded PNG image.  (You can use this URL as-is in a web browser or browser source to display the image).  Otherwise it's an empty string.
+
 
 ### SongEnd
 
@@ -74,27 +81,41 @@ Emitted as the last note of the map is completed.
 
 ```json
 {
-    "eventType":"SongEnd",
-    "data":{
-        "song":"2 Phut Hon (Kaiz Remix)",
-        "perfect":350,
-        "normal":126,
-        "bad":281,
-        "fail":2,
-        "highestCombo":482
+    "eventType": "SongEnd",
+    "data": {
+        "song": "2 Phut Hon (Kaiz Remix)",
+        "perfect": 350,
+        "normal": 126,
+        "bad": 281,
+        "fail": 2,
+        "highestCombo": 482
     }
 }
 ```
+
+- `song` - Song title
+- `perfect` - Number of perfect hits
+- `normal` - Number of normal hits
+- `bad` - Number of bad hits
+- `fail` - Number of failed hits
+- `highestCombo` - Highest number of consecutive hits during song
+
 
 ### PlayTime
 
 Emitted once per second when the song is playing.
 
 ```json
-{"eventType":"PlayTime","data":{"playTimeMS":19662.48}}
+{
+    "eventType": "PlayTime",
+    "data": {
+        "playTimeMS": 19662.48
+    }
+}
 ```
 
 - `playTimeMS` - Current play time position, in milliseconds.
+
 
 ### NoteHit
 
@@ -102,51 +123,69 @@ Emitted on every note hit successfully
 
 ```json
 {
-    "eventType":"NoteHit",
-    "data":{
-        "score":938,
-        "combo":1,
-        "multiplier":1,
-        "completed":1.0,
-        "lifeBarPercent":1.0
+    "eventType": "NoteHit",
+    "data": {
+        "score": 938,
+        "combo": 1,
+        "multiplier": 1,
+        "completed": 1.0,
+        "lifeBarPercent": 1.0,
+        "playTimeMS": 19662.48
     }
 }
 ```
 
-  - `score` - Total score after the note is hit
-  - `combo` - Number of consecutive hits made so far.  This resets after a note miss.
-  - `multiplier` - Current score multiplier.  Runs from 1 to 6.
-  - `completed` - Indicates the percentage of notes completed in the map.? (CHECK THIS)
-  - `lifeBarPercent` - A number between 0 and 1 indicating life bar percentage.
+- `score` - Total score after the note is hit
+- `combo` - Number of consecutive hits made so far. This resets after a note miss.
+- `multiplier` - Current score multiplier.  Runs from 1 to 6.
+- `completed` - Running total of all notes hit (perfect + normal + bad, no fails)
+- `lifeBarPercent` - A number between 0 and 1 indicating life bar percentage.
+- `playTimeMS` - Current play time position, in milliseconds.
+
 
 ### NoteMiss
 
 ```json
 {
-    "eventType":"NoteMiss",
-    "data":{
-        "multiplier":2,
-        "lifeBarPercent":0.8333333
+    "eventType": "NoteMiss",
+    "data": {
+        "multiplier": 2,
+        "lifeBarPercent": 0.8333333,
+        "playTimeMS": 19662.48
     }
 }
 ```
 
+- `multiplier` - Score multiplier before this miss resets it.
+- `lifeBarPercent` - A number between 0 and 1 indicating life bar percentage.
+- `playTimeMS` - Current play time position, in milliseconds.
+
+
 ### EnterSpecial
 
 ```json
-{"eventType":"EnterSpecial","data":{}}
+{
+    "eventType": "EnterSpecial",
+    "data": {}
+}
 ```
 
 ### CompleteSpecial
 
 ```json
-{"eventType":"CompleteSpecial","data":{}}
+{
+    "eventType":"CompleteSpecial",
+    "data": {}
+}
 ```
 
 ### FailSpecial
 
 ```json
-{"eventType":"FailSpecial","data":{}}
+{
+    "eventType": "FailSpecial",
+    "data": {}
+}
 ```
 
 ### SceneChange
@@ -159,18 +198,24 @@ Some scene names of interest:
 
 ```json
 {
-    "eventType":"SceneChange",
-    "data":{
-        "sceneName":"3.GameEnd"
+    "eventType": "SceneChange",
+    "data": {
+        "sceneName": "3.GameEnd"
     }
 }
 ```
+
+- `sceneName` - Name of scene being entered
+
 
 ### ReturnToMenu
 
 Emitted when the user selects the "Return to Menu" button on the game pause screen.
 
-```
-{"eventType":"ReturnToMenu","data":{}}
+```json
+{
+    "eventType": "ReturnToMenu",
+    "data": {}
+}
 ```
 
