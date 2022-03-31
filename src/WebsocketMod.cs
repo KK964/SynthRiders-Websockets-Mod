@@ -39,7 +39,8 @@ namespace SynthRidersWebsockets
         /**
          * Keep track of last time play time was emitted so we only emit once per second.
          */
-        private float lastPlayTimeMS = 0;
+        private float lastPlayTimeEventMS = 0;
+        private float currentPlayTimeMS = 0.0f;
 
         public override void OnApplicationStart() {
             Instance = this;
@@ -83,19 +84,25 @@ namespace SynthRidersWebsockets
                 this.playTimeMS = playTimeMS;
             }
         }
+
         public override void OnUpdate()
         {
             // If song is playing, check the last play time.  If it's advanced at least one second, emit an update.
             if (gameControlManager != null && gameControlManager == GameControlManager.s_instance)
             {
-                if (gameControlManager.SongIsPlaying && (gameControlManager.PlayTimeMS - this.lastPlayTimeMS > 999))
+                if (gameControlManager.SongIsPlaying)
                 {
-                    PlayTimeEvent playTimeEvent = new PlayTimeEvent(gameControlManager.PlayTimeMS);
-                    Send("PlayTime", playTimeEvent);
-                    this.lastPlayTimeMS = gameControlManager.PlayTimeMS;
-                } else if (!gameControlManager.SongIsPlaying && this.lastPlayTimeMS > 0)
+                    this.currentPlayTimeMS = gameControlManager.PlayTimeMS;
+                    if (currentPlayTimeMS - lastPlayTimeEventMS > 999)
+                    {
+                        PlayTimeEvent playTimeEvent = new PlayTimeEvent(currentPlayTimeMS);
+                        Send("PlayTime", playTimeEvent);
+                        this.lastPlayTimeEventMS = currentPlayTimeMS;
+                    }
+                }
+                else
                 {
-                    this.lastPlayTimeMS = 0;
+                    this.lastPlayTimeEventMS = 0.0f;
                 }
             }
         }
@@ -220,14 +227,16 @@ namespace SynthRidersWebsockets
             public int multiplier { get; set; }
             public float completed { get; set; }
             public float lifeBarPercent { get; set; }
+            public float playTimeMS { get; set; }
             
-            public StageNoteHitEvent(int score, int combo, float completed, int multiplier, float lifeBarPercent)
+            public StageNoteHitEvent(int score, int combo, float completed, int multiplier, float lifeBarPercent, float playTimeMS)
             {
                 this.score = score;
                 this.combo = combo;
                 this.completed = completed;
                 this.multiplier = multiplier;
                 this.lifeBarPercent = lifeBarPercent;
+                this.playTimeMS = playTimeMS;
             }
         }
         private void OnNoteHit()
@@ -239,7 +248,8 @@ namespace SynthRidersWebsockets
                 score.CurrentCombo,
                 score.NotesCompleted,
                 score.TotalMultiplier,
-                LifeBarHelper.GetScalePercent()
+                LifeBarHelper.GetScalePercent(),
+                currentPlayTimeMS
             );
             
             Send("NoteHit", stageNoteHitEvent);
@@ -249,18 +259,22 @@ namespace SynthRidersWebsockets
             public int multiplier;
 
             public float lifeBarPercent;
+            public float playTimeMS;
 
-            public StageNoteMissEvent(int multiplier, float lifeBarPercent)
+
+            public StageNoteMissEvent(int multiplier, float lifeBarPercent, float playTimeMS)
             {
                 this.multiplier = multiplier;
                 this.lifeBarPercent = lifeBarPercent;
+                this.playTimeMS = playTimeMS;
             }
         }
         private void OnNoteFail()
         {
             StageNoteMissEvent missEvent = new StageNoteMissEvent(
                 GameControlManager.s_instance.ScoreManager.TotalMultiplier,
-                LifeBarHelper.GetScalePercent()
+                LifeBarHelper.GetScalePercent(),
+                currentPlayTimeMS
             );
 
             Send("NoteMiss", missEvent);
