@@ -219,3 +219,14 @@ Emitted when the user selects the "Return to Menu" button on the game pause scre
 }
 ```
 
+---
+
+## Using from another mod
+
+To easily consume these events from another Synth Riders mod:
+- Target .NET 4.8 to match this project
+- Add a Reference to SynthRidersWebsockets.dll
+- Implement the ISynthRidersEventHandler interface
+- Create a new `SynthRidersEventsManager` after `Awake()` is called (to make sure the socket is created before connecting)
+
+See [SRPerformanceMeter](https://github.com/bookdude13/SRPerformanceMeter) as an example implementation.
