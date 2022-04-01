@@ -19,14 +19,16 @@ using UnityEngine.Events;
 using MelonLoader;
 
 using SynthRidersWebsockets.Harmony;
+using SynthRidersWebsockets.Events;
+
 /*
- * Todo:
- * - Emit event if song failed.
- * - Emit event is song is quit.
- * - Previous high score
- * - Emit what hand note was for (left, right, special one-hand, special two-hand
- * - Score on specific hits
- */
+* Todo:
+* - Emit event if song failed.
+* - Emit event is song is quit.
+* - Previous high score
+* - Emit what hand note was for (left, right, special one-hand, special two-hand)
+* - Score on specific hits
+*/
 namespace SynthRidersWebsockets
 {
     public class WebsocketMod : MelonMod
@@ -39,7 +41,8 @@ namespace SynthRidersWebsockets
         /**
          * Keep track of last time play time was emitted so we only emit once per second.
          */
-        private float lastPlayTimeMS = 0;
+        private float lastPlayTimeEventMS = 0;
+        private float currentPlayTimeMS = 0.0f;
 
         public override void OnApplicationStart() {
             Instance = this;
@@ -56,53 +59,39 @@ namespace SynthRidersWebsockets
             Websocket.Stop();
         }
 
-        public class SceneChangeEvent
-        {
-            public string sceneName;
-
-            public SceneChangeEvent(string sceneName)
-            {
-                this.sceneName = sceneName;
-            }
-        }
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             base.OnSceneWasLoaded(buildIndex, sceneName);
 
-            SceneChangeEvent sceneChangeEvent = new SceneChangeEvent(sceneName);
-            
-            this.Send("SceneChange", sceneChangeEvent);
+            EventDataSceneChange sceneChangeEvent = new EventDataSceneChange(sceneName);
+            Send(new SynthRidersEvent<EventDataSceneChange>("SceneChange", sceneChangeEvent));
         }
 
-        class PlayTimeEvent
-        {
-            public float playTimeMS;
-
-            public PlayTimeEvent(float playTimeMS)
-            {
-                this.playTimeMS = playTimeMS;
-            }
-        }
         public override void OnUpdate()
         {
             // If song is playing, check the last play time.  If it's advanced at least one second, emit an update.
             if (gameControlManager != null && gameControlManager == GameControlManager.s_instance)
             {
-                if (gameControlManager.SongIsPlaying && (gameControlManager.PlayTimeMS - this.lastPlayTimeMS > 999))
+                if (gameControlManager.SongIsPlaying)
                 {
-                    PlayTimeEvent playTimeEvent = new PlayTimeEvent(gameControlManager.PlayTimeMS);
-                    Send("PlayTime", playTimeEvent);
-                    this.lastPlayTimeMS = gameControlManager.PlayTimeMS;
-                } else if (!gameControlManager.SongIsPlaying && this.lastPlayTimeMS > 0)
+                    this.currentPlayTimeMS = gameControlManager.PlayTimeMS;
+                    if (currentPlayTimeMS - lastPlayTimeEventMS > 999)
+                    {
+                        EventDataPlayTime playTimeEvent = new EventDataPlayTime(currentPlayTimeMS);
+                        Send(new SynthRidersEvent<EventDataPlayTime>("PlayTime", playTimeEvent));
+                        this.lastPlayTimeEventMS = currentPlayTimeMS;
+                    }
+                }
+                else
                 {
-                    this.lastPlayTimeMS = 0;
+                    this.lastPlayTimeEventMS = 0.0f;
                 }
             }
         }
 
         public void EmitReturnToMenuEvent()
         {
-            this.Send("ReturnToMenu", new object());
+            Send(new SynthRidersEvent<object>("ReturnToMenu", new object()));
         }
 
         public void GameManagerInit()
@@ -134,28 +123,7 @@ namespace SynthRidersWebsockets
                 LoggerInstance.Msg(e.Message);
             }
         }
-
-        class StageSongStartEvent
-        {
-            public string song;
-            public string difficulty;
-            public string author;
-            public string beatMapper;
-            public float length;
-            public float bpm;
-            public string albumArt;
-
-            public StageSongStartEvent(string song, string difficulty, string author, string beatMapper, float length, float bpm, string albumArt = null)
-            {
-                this.song = song;
-                this.difficulty = difficulty;
-                this.author = author;
-                this.beatMapper = beatMapper;
-                this.length = length;
-                this.bpm = bpm;
-                this.albumArt = albumArt;
-            }
-        }
+        
         private void OnSongStart()
         {
             // It'd be better to get this directly from within the game, but it seems
@@ -169,7 +137,7 @@ namespace SynthRidersWebsockets
                 albumArtEncoded = "data:image/png;base64," + System.Convert.ToBase64String(File.ReadAllBytes(albumArtPath));
             }
 
-            StageSongStartEvent stageSongStartEvent = new StageSongStartEvent(
+            EventDataSongStart songStartEvent = new EventDataSongStart(
                 GameControlManager.s_instance.InfoProvider.TrackName,
                 GameControlManager.s_instance.InfoProvider.CurrentDifficulty.ToString(),
                 GameControlManager.s_instance.InfoProvider.Author,
@@ -179,123 +147,71 @@ namespace SynthRidersWebsockets
                 albumArtEncoded
             );
 
-            Send("SongStart", stageSongStartEvent);
+            Send(new SynthRidersEvent<object>("SongStart", songStartEvent));
         }
 
-        class StageSongEndEvent
-        {
-            public string song;
-            public int perfect;
-            public int normal;
-            public int bad;
-            public int fail;
-            public int highestCombo;
-            public StageSongEndEvent(string song, int perfect, int normal, int bad, int fail, int highestCombo)
-            {
-                this.song = song;
-                this.perfect = perfect;
-                this.normal = normal;
-                this.bad = bad;
-                this.fail = fail;
-                this.highestCombo = highestCombo;
-            }
-        }
         private void OnSongEnd()
         {
             Game_ScoreManager score = (Game_ScoreManager)ReflectionUtils.GetValue(GameControlManager.s_instance, "m_scoreManager");
-            StageSongEndEvent stageSongEndEvent = new StageSongEndEvent(
+            EventDataSongEnd songEndEvent = new EventDataSongEnd(
                 GameControlManager.s_instance.InfoProvider.TrackName,
                 GameControlManager.s_instance.InfoProvider.TotalPerfectNotes,
                 GameControlManager.s_instance.InfoProvider.TotalNormalNotes,
                 GameControlManager.s_instance.InfoProvider.TotalBadNotes,
                 GameControlManager.s_instance.InfoProvider.TotalFailNotes,
                 score.MaxCombo);
-            Send("SongEnd", stageSongEndEvent);
-        }
 
-        class StageNoteHitEvent
-        {
-            public int score { get; set; }
-            public int combo { get; set; }
-            public int multiplier { get; set; }
-            public float completed { get; set; }
-            public float lifeBarPercent { get; set; }
-            
-            public StageNoteHitEvent(int score, int combo, float completed, int multiplier, float lifeBarPercent)
-            {
-                this.score = score;
-                this.combo = combo;
-                this.completed = completed;
-                this.multiplier = multiplier;
-                this.lifeBarPercent = lifeBarPercent;
-            }
+            Send(new SynthRidersEvent<EventDataSongEnd>("SongEnd", songEndEvent));
         }
+        
         private void OnNoteHit()
         {
             Game_ScoreManager score = (Game_ScoreManager) ReflectionUtils.GetValue(GameControlManager.s_instance, "m_scoreManager");
             
-            StageNoteHitEvent stageNoteHitEvent = new StageNoteHitEvent(
+            EventDataNoteHit noteHitEvent = new EventDataNoteHit(
                 score.Score,
                 score.CurrentCombo,
                 score.NotesCompleted,
                 score.TotalMultiplier,
-                LifeBarHelper.GetScalePercent()
+                LifeBarHelper.GetScalePercent(),
+                currentPlayTimeMS
             );
-            
-            Send("NoteHit", stageNoteHitEvent);
-        }
-        class StageNoteMissEvent
-        {
-            public int multiplier;
 
-            public float lifeBarPercent;
-
-            public StageNoteMissEvent(int multiplier, float lifeBarPercent)
-            {
-                this.multiplier = multiplier;
-                this.lifeBarPercent = lifeBarPercent;
-            }
+            Send(new SynthRidersEvent<EventDataNoteHit>("NoteHit", noteHitEvent));
         }
+        
         private void OnNoteFail()
         {
-            StageNoteMissEvent missEvent = new StageNoteMissEvent(
+            EventDataNoteMiss noteMissEvent = new EventDataNoteMiss(
                 GameControlManager.s_instance.ScoreManager.TotalMultiplier,
-                LifeBarHelper.GetScalePercent()
+                LifeBarHelper.GetScalePercent(),
+                currentPlayTimeMS
             );
 
-            Send("NoteMiss", missEvent);
+            Send(new SynthRidersEvent<EventDataNoteMiss>("NoteMiss", noteMissEvent));
         }
 
         private void OnEnterSpecial()
         {
-            Send("EnterSpecial", new object());
+            Send(new SynthRidersEvent<object>("EnterSpecial", new object()));
         }
 
         private void OnCompleteSpecial()
         {
-            Send("CompleteSpecial", new object());
+            Send(new SynthRidersEvent<object>("CompleteSpecial", new object()));
         }
 
         private void OnFailSpecial()
         {
-            Send("FailSpecial", new object());
+            Send(new SynthRidersEvent<object>("FailSpecial", new object()));
         }
 
-        class OutputEvent
+        public void Send<T>(SynthRidersEvent<T> outputEvent)
         {
-            public string eventType;
-            public object data;
-
-            public OutputEvent(string eventType, object data)
+            if (Websocket.server == null)
             {
-                this.eventType = eventType;
-                this.data = data;
+                return;
             }
-        }
-        public void Send(string eventName, object data)
-        {
-            if (Websocket.server == null) return;
-            OutputEvent outputEvent = new OutputEvent(eventName, data);
 
             Websocket.Send(JsonConvert.SerializeObject(outputEvent));
         }

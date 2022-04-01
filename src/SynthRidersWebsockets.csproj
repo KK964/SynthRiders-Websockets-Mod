@@ -63,6 +63,15 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Events\EventDataNoteHit.cs" />
+    <Compile Include="Events\EventDataNoteMiss.cs" />
+    <Compile Include="Events\EventDataPlayTime.cs" />
+    <Compile Include="Events\EventDataSceneChange.cs" />
+    <Compile Include="Events\EventDataSongEnd.cs" />
+    <Compile Include="Events\EventDataSongStart.cs" />
+    <Compile Include="Events\ISynthRidersEventHandler.cs" />
+    <Compile Include="Events\SynthRidersEvent.cs" />
+    <Compile Include="Events\SynthRidersEventsManager.cs" />
     <Compile Include="Harmony\RuntimePatch.cs" />
     <Compile Include="WebsocketMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
